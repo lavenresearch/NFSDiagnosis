@@ -1,2 +1,2 @@
 # NFSDiagnosis
-diagnosing failures and performance faults for pNFS systems
+diagnosing failures and performance faults for NFS systems
