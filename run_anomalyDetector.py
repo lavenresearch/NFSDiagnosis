@@ -149,7 +149,9 @@ class AnomalyDetector:
 
     def diagnosis(self,node,angle):
         currentTime = time.time() - self.startTime
+        print "########"+time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         print currentTime,node,angle
+	print "########"
 
     def updateFaultDB(self):
         pass
@@ -162,7 +164,7 @@ class AnomalyDetector:
 
 
 if __name__ == '__main__':
-    kafkaTopic = KafkaTopic("127.0.0.1",
+    kafkaTopic = KafkaTopic("192.168.3.130",
                             "9092",
                             "messagetunnel")
     detector = AnomalyDetector(kafkaTopic,1,10)

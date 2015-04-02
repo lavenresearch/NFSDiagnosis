@@ -1,4 +1,5 @@
 import subprocess
+import sys
 import time
 import json
 import os
@@ -36,21 +37,74 @@ class RPCCollector:
         stime = time.time()
         counts = {}
         sumCount = 0
-        proc = subprocess.Popen(["tshark","-i","eth0"],stdout=subprocess.PIPE)
-        for line in iter(proc.stdout.readline,''):
-            lparts = line.split(" ")
-            if lparts[6] == "NFS":
-                print lparts
-                op = lparts[8]+lparts[9]
-                sumCount += 1
-                if op in counts:
-                    counts[op] = counts[op] + 1
-                else:
-                    counts[op] = 1
-                print op,counts[op],sumCount
-            if time.time() - stime >= self.window:
-                proc.terminate()
-                return counts,sumCount
+        #proc = subprocess.Popen(["tshark","-i","ib0","-f","not arp"],stdout=subprocess.PIPE)
+        while True:
+            print "another while loop-----------------------------------------------------"
+            proc = subprocess.Popen(["tshark","-i","ib0","-f","not arp"],stdout=subprocess.PIPE)
+            for line in iter(proc.stdout.readline,''):
+                nfsLoc = line.find("NFS")
+                if nfsLoc > 0:
+                    direction = line[nfsLoc:].split(" ")[3]
+                    seqLoc = line.find("SEQUENCE")
+                    if seqLoc < 0:
+                       continue
+                    ops = line[seqLoc:].split(" ")
+                    for opindex in xrange(1,len(ops)):
+                       op = ops[opindex]
+                       op = direction+":"+op
+                       sumCount += 1
+                       if op in counts:
+                           counts[op] = counts[op] + 1
+                       else:
+                           counts[op] = 1
+            #for line in iter(proc.stdout.readline,''):
+                #print line
+                #lparts = line.split(" ")
+                #if lparts[6] == "NFS":
+                #    print lparts
+                #    op = lparts[8]+lparts[9]
+                #    sumCount += 1
+                #    if op in counts:
+                #        counts[op] = counts[op] + 1
+                #    else:
+                #        counts[op] = 1
+                #    print op,counts[op],sumCount
+            #while True:
+            #    line = proc.stdout.read(1)
+            #    sys.stdout.write(line)
+            #    sys.stdout.flush()
+            #    if line == '' and proc.poll() != None:
+            #        break
+            #    if line != '':
+                    #sys.stdout.write("enter!!!")
+                    #sys.stdout.flush()
+            #        nfsLoc = line.find("NFS")
+            #        if nfsLoc != -1:
+            #            sys.stdout.write("\nfind NFS\n\n\n\n")
+            #            sys.stdout.flush()
+                        #sys.stdout.write(line)
+                        #sys.stdout.flush()
+            #            direction = line[nfsLoc:].split(" ")[3]
+            #            seqLoc = line.find("SEQUENCE")
+            #            if seqLoc == -1:
+            #                continue
+            #            ops = line[seqLoc:].split(" ")
+            #            for opindex in xrange(1,len(ops)):
+            #                op = ops[opindex]
+            #                op = direction+":"+op
+            #                sumCount += 1
+            #                if op in counts:
+            #                    counts[op] = counts[op] + 1
+            #                else:
+            #                    counts[op] = 1
+                if time.time() - stime >= self.window:
+                    # proc.terminate()
+                    msg = self.genMessage(counts,sumCount)
+                    print msg
+                    self.kafkaT.sendMessage(msg)
+                    stime = time.time()
+                    counts = {}
+                    sumCount = 0
         #for line in iter(proc.stdout.readline,''):
         #    if line[0] == "N":
         #        opline = line.split("\n")[0].split(":")[1]
@@ -63,25 +117,24 @@ class RPCCollector:
         #                counts[o] = 1
         #    if time.time()-stime >= self.window:
         #        return counts,sumCount
-    def genMessage(self,rpccount):
+    def genMessage(self,counts,sumCount):
         message = {}
         message['node'] = self.hostIP
-        message['total'] = rpccount[1]
-        message['counts'] = rpccount[0]
+        message['total'] = sumCount
+        message['counts'] = counts
         return json.dumps(message)
     def collect(self):
         if self.window <= 0:
             return
-        while True:
-            rpccount = self.getRPCCount()
-            print rpccount
-            msg = self.genMessage(rpccount)
-            self.kafkaT.sendMessage(msg)
+        self.getRPCCount()
 
 if __name__ == '__main__':
-    kafkaTopic = KafkaTopic("127.0.0.1",
-                                "9092",
-                                "messagetunnel")
+    if len(sys.argv) == 2:
+        ip = sys.argv[1]
+        print "Detector IP: " + ip
+    else:
+        ip = "192.168.3.130"
+    kafkaTopic = KafkaTopic(ip,"9092","messagetunnel")
     collector = RPCCollector(kafkaTopic,30)
     collector.collect()
 

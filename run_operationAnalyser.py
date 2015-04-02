@@ -1,4 +1,5 @@
 import json
+import time
 from kafka.client import KafkaClient
 from kafka.consumer import SimpleConsumer
 
@@ -28,7 +29,7 @@ class OperationAnalyser:
             msg = json.loads(rawMsg.message.value)
             counts = msg['counts']
             sortedCounts = sorted(counts.iteritems(), key=lambda counts : counts[1], reverse=True)
-            print "#############################"
+            print "##############"+time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())+"###############"
             print "node : " + msg['node']
             print "total : " + str(msg['total'])
             for i in xrange(len(sortedCounts)):
@@ -36,7 +37,7 @@ class OperationAnalyser:
 
 
 if __name__ == '__main__':
-    kafkaTopic = KafkaTopic("127.0.0.1",
+    kafkaTopic = KafkaTopic("192.168.3.130",
                             "9092",
                             "messagetunnel")
     analyser = OperationAnalyser(kafkaTopic)
